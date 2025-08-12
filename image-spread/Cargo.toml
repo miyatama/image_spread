@@ -1,0 +1,17 @@
+[workspace]
+resolver = "2"
+
+members = [
+    "ui",
+    "usecase",
+    "repository",
+    "domain_handler",
+    "domain",
+    "util", "repository_handler", "usecase_handler",
+]
+
+[workspace.dependencies]
+anyhow = "1.0.95"
+thiserror = "2.0.11"
+tracing = "0.1.41"
+tracing-subscriber = {version = "0.3.19", features = ["std", "env-filter", "registry", "fmt", "json"]}
