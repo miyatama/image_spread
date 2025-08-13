@@ -3,4 +3,14 @@ name = "repository_handler"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+mock = []
+
 [dependencies]
+util = {path = "../util"}
+repository = {path = "../repository"}
+domain_handler = {path = "../domain_handler"}
+
+[dev-dependencies]
+repository = {path = "../repository", features = ["mock"]}
+domain_handler = {path = "../domain_handler", features = ["mock"]}

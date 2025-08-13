@@ -4,3 +4,22 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+util = {path = "../util"}
+usecase = {path = "../usecase"}
+usecase_handler = {path = "../usecase_handler"}
+repository = {path = "../repository"}
+repository_handler = {path = "../repository_handler"}
+domain = {path = "../domain"}
+domain_handler = {path = "../domain_handler"}
+clap = {version = "4.5.23", features = ["derive"] }
+tokio = {version = "1.41.1", features = ["full"]}
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+[dev-dependencies]
+usecase = {path = "../usecase", features = ["mock"]}
+usecase_handler = {path = "../usecase_handler", features = ["mock"]}
+repository = {path = "../repository", features = ["mock"]}
+repository_handler = {path = "../repository_handler", features = ["mock"]}
+domain = {path = "../domain", features = ["mock"]}
+domain_handler = {path = "../domain_handler", features = ["mock"]}
