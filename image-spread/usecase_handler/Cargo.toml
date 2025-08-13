@@ -3,4 +3,13 @@ name = "usecase_handler"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+mock = []
+
 [dependencies]
+usecase= {path = "../usecase"}
+repository_handler = {path = "../repository_handler"}
+
+[dev-dependencies]
+usecase= {path = "../usecase", features = ["mock"]}
+repository_handler = {path = "../repository_handler", features = ["mock"]}
