@@ -9,8 +9,8 @@ mock = []
 [dependencies]
 util = {path = "../util"}
 repository = {path = "../repository"}
-domain_handler = {path = "../domain_handler"}
+infra_handler = {path = "../infra_handler"}
 
 [dev-dependencies]
 repository = {path = "../repository", features = ["mock"]}
-domain_handler = {path = "../domain_handler", features = ["mock"]}
+infra_handler = {path = "../infra_handler", features = ["mock"]}

@@ -1,14 +1,5 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+mod usecases;
+mod usecases_impls;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub use usecases::parse_image_usecase::ParseImageUseCase;
+pub use usecases_impls::parse_image_usecase_impl::ParseImageUseCaseImpl;

@@ -1,14 +1,8 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+mod repositories;
+mod repositories_impls;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+#[cfg(feature = "mock")]
+pub use repositories::MockImageInfoRepository;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub use repositories::ImageInfoRepository;
+pub use repositories_impls::ImageInfoRepositoryImpl;

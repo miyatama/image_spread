@@ -5,8 +5,8 @@ members = [
     "ui",
     "usecase",
     "repository",
-    "domain_handler",
-    "domain",
+    "infra_handler",
+    "infra",
     "util", "repository_handler", "usecase_handler",
 ]
 

@@ -1,14 +1,5 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+mod usecase_handler;
+mod usecase_handler_impl;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub use usecase_handler::UsecaseHandler;
+pub use usecase_handler_impl::UsecaseHandlerImpl;

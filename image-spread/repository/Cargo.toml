@@ -8,8 +8,8 @@ mock = []
 
 [dependencies]
 util = {path = "../util"}
-domain = {path = "../domain"}
-domain_handler = {path = "../domain_handler"}
+infra = {path = "../infra"}
+infra_handler = {path = "../infra_handler"}
 mockall = {version = "0.13.1"}
 mockall_double = {version = "0.3.1"}
 anyhow = { workspace = true }
@@ -17,4 +17,4 @@ thiserror = { workspace = true }
 
 [dev-dependencies]
 fake = "3.0.1"
-domain = {path = "../domain", features = ["mock"]}
+infra = {path = "../infra", features = ["mock"]}
