@@ -17,3 +17,4 @@ futures = "0.3.31"
 mockall = {version = "0.13.1", optional = true}
 mockall_double = {version = "0.3.1", optional = true}
 cfg-if = "1.0.0"
+image = { workspace = true }

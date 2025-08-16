@@ -1,14 +1,8 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+mod infras;
+mod infras_impls;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+#[cfg(feature = "mock")]
+pub use infras::MockFileSystem;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub use infras::FileSystem;
+pub use infras_impls::FileSystemImpl;

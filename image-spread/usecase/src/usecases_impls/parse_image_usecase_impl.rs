@@ -1,24 +1,32 @@
 use crate::usecases::parse_image_usecase::ParseImageUseCase;
+use crate::entities::parse_image_usecase_param::ParseImageUseCaseParam;
 use repository::ImageInfoRepository;
 use util::AppResult;
 use util::ImageInfo;
 
 pub struct ParseImageUseCaseImpl<'r, R: ImageInfoRepository> {
-    todo_repository: &'r R,
+    image_info_repository: &'r R,
 }
 
 impl<'r, R: ImageInfoRepository> ParseImageUseCaseImpl<'r, R> {
-    pub fn new(todo_repository: &'r R) -> Self {
+    pub fn new(image_info_repository: &'r R) -> Self {
         Self {
-            todo_repository: todo_repository,
+            image_info_repository: image_info_repository,
         }
     }
 }
 
 impl<'r, R: ImageInfoRepository> ParseImageUseCase for ParseImageUseCaseImpl<'r, R> {
     #[tracing::instrument(skip(self))]
-    fn run(&self) -> AppResult<Vec<ImageInfo>> {
-        self.todo_repository.list()
+    fn run(&self, param: ParseImageUseCaseParam) -> AppResult<Vec<ImageInfo>> {
+        Ok(
+            vec!(
+                ImageInfo {
+                    path: param.path,
+                    grid_width: param.grid_width,
+                }
+            )
+        )
     }
 }
 

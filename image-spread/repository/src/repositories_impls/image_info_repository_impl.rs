@@ -1,22 +1,26 @@
 use crate::repositories::ImageInfoRepository;
 use util::AppResult;
 use util::ImageInfo;
+use infra::FileSystem;
 
-pub struct ImageInfoRepositoryImpl<'r, T: ImageInfoApiClient> {
-    todo_api_client: &'r T,
+pub struct ImageInfoRepositoryImpl<'r, T: FileSystem> {
+    file_system: &'r T,
 }
 
-impl<'r, T: ImageInfoApiClient> ImageInfoRepositoryImpl<'r, T> {
-    pub fn new(todo_api_client: &'r T) -> Self {
+impl<'r, T: FileSystem> ImageInfoRepositoryImpl<'r, T> {
+    pub fn new(file_system: &'r T) -> Self {
         Self {
-            todo_api_client: todo_api_client,
+            file_system: file_system,
         }
     }
 }
 
-impl<'r, T: ImageInfoApiClient> ImageInfoRepository for ImageInfoRepositoryImpl<'r, T> {
+impl<'r, T: FileSystem> ImageInfoRepository for ImageInfoRepositoryImpl<'r, T> {
     fn parse(&self, path: String, grid_width: u32) -> AppResult<ImageInfo> {
-        self.todo_api_client.create(ImageInfo { id: 0, text: text })
+        Ok(ImageInfo{
+            path: path,
+            grid_width: grid_width,
+        })
     }
 }
 
