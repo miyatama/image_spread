@@ -3,7 +3,7 @@ use infra_handler::InfraHandlerImpl;
 use repository_handler::RepositoryHandlerImpl;
 use std::cmp::min;
 use tracing::{Level, event};
-use usecase::{ParseImageCase};
+use usecase::{ParseImageUseCase, ParseImageUseCaseParam};
 use usecase_handler::{UsecaseHandler, UsecaseHandlerImpl};
 use util::AppResult;
 
@@ -27,19 +27,16 @@ enum SubCommands {
 #[tracing::instrument]
 pub async fn run(config: &Config) -> AppResult<()> {
     let infra_hanler = InfraHandlerImpl::new();
-    match infra_hanler {
-        Err(e) => {
-            return Err(e);
-        }
-        _ => {}
-    }
-    let infra_hanler = infra_hanler.unwrap();
     let repository_handler = RepositoryHandlerImpl::new(&infra_hanler);
     let usecases = UsecaseHandlerImpl::new(&repository_handler).await;
     match &config.subcommand {
         SubCommands::ImageInfo { grid_width, path } => {
             let usecase = usecases.parse_image();
-            match usecase.run() {
+            let param = ParseImageUseCaseParam{
+                path: (*path.clone()).to_string(),
+                grid_width: *grid_width,
+            };
+            match usecase.run(param) {
                 Ok(image_info) => {
                     // TODO ここでimage_infoのjsonを出力
                     return Ok(());

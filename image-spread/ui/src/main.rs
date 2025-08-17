@@ -13,9 +13,9 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer().json())
         .init();
 
-    match ui::get_args() {
+    match image_spread::get_args() {
         Ok(config) => {
-            if let Err(e) = ui::run(&config).await {
+            if let Err(e) = image_spread::run(&config).await {
                 error!("{:?}", e);
                 std::process::exit(1);
             }
