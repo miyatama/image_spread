@@ -1,8 +1,6 @@
 use crate::UsecaseHandler;
 use repository_handler::RepositoryHandler;
-use usecase::{
-    ParseImageUseCaseImpl,
-};
+use usecase::ParseImageUseCaseImpl;
 
 pub struct UsecaseHandlerImpl<'r, R: RepositoryHandler> {
     parse_image_usecase: ParseImageUseCaseImpl<'r, R::ImageInfo>,

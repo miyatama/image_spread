@@ -1,6 +1,7 @@
 mod entity;
 mod error;
 
+pub use entity::image_info::ImageGridCell;
 pub use entity::image_info::ImageInfo;
 
 pub use error::Error;

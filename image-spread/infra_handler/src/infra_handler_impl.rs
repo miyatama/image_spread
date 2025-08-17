@@ -7,7 +7,7 @@ pub struct InfraHandlerImpl {
 
 impl InfraHandlerImpl {
     pub fn new() -> Self {
-        let file_system= FileSystemImpl::new();
+        let file_system = FileSystemImpl::new();
         Self {
             file_system_accessor: file_system,
         }

@@ -1,11 +1,10 @@
 use clap::{Parser, Subcommand};
 use infra_handler::InfraHandlerImpl;
 use repository_handler::RepositoryHandlerImpl;
-use std::cmp::min;
-use tracing::{Level, event};
 use usecase::{ParseImageUseCase, ParseImageUseCaseParam};
 use usecase_handler::{UsecaseHandler, UsecaseHandlerImpl};
 use util::AppResult;
+use tracing::{event, Level};
 
 #[derive(Debug, Parser)]
 #[command(version, about, long_about = None)]
@@ -32,13 +31,13 @@ pub async fn run(config: &Config) -> AppResult<()> {
     match &config.subcommand {
         SubCommands::ImageInfo { grid_width, path } => {
             let usecase = usecases.parse_image();
-            let param = ParseImageUseCaseParam{
+            let param = ParseImageUseCaseParam {
                 path: (*path.clone()).to_string(),
                 grid_width: *grid_width,
             };
             match usecase.run(param) {
                 Ok(image_info) => {
-                    // TODO ここでimage_infoのjsonを出力
+                    println!("image info: {:?}", image_info);
                     return Ok(());
                 }
                 Err(e) => {
