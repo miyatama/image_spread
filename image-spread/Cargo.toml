@@ -18,3 +18,4 @@ tracing-subscriber = {version = "0.3.19", features = ["std", "env-filter", "regi
 image = "0.25.5"
 serde_json = "1.0.132"
 serde = "1.0.214"
+log = "0.4.27"

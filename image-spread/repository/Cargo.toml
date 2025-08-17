@@ -15,6 +15,7 @@ mockall_double = {version = "0.3.1"}
 anyhow = { workspace = true }
 thiserror = { workspace = true }
 image = { workspace = true }
+log = {workspace = true}
 
 [dev-dependencies]
 fake = "3.0.1"

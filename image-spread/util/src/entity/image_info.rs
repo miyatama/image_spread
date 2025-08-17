@@ -15,4 +15,5 @@ pub struct ImageGridCell {
     pub image_y1: u32,
     pub image_x2: u32,
     pub image_y2: u32,
+    pub has_valid_pixel: bool,
 }
