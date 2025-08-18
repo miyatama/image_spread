@@ -30,6 +30,7 @@ impl<'r, T: FileSystem> ImageInfoRepository for ImageInfoRepositoryImpl<'r, T> {
                 pixel[3]
             })
             .collect::<Vec<u8>>();
+        // println!("alphas: {:?}", alphas.clone());
         let x_cell_size = width / grid_width;
         let y_cell_size = height / grid_width;
         let x_cell_size = if (x_cell_size * grid_width) < width {
@@ -58,16 +59,24 @@ impl<'r, T: FileSystem> ImageInfoRepository for ImageInfoRepositoryImpl<'r, T> {
                     y1 + grid_width - 1
                 };
                 let mut max_alpha = 0u8;
+                let mut last_max_changed_index = 0;
+                let mut last_max_changed_x = 0;
+                let mut last_max_changed_y = 0;
                 for y in y1..=y2 {
                     for x in x1..=x2 {
                         let index = (y * grid_width + x) as usize;
-                        let alpha = alphas[index];
+                        // TODO alpha配列使うように変更したい
+                        let alpha = image_rgb.get_pixel(x, y)[3];
                         if alpha > max_alpha {
                             max_alpha = alpha;
+                            last_max_changed_index = index;
+                            last_max_changed_x = x;
+                            last_max_changed_y = y;
                         }
                     }
                 }
-                let has_valid_pixel = max_alpha == 255;
+
+                let has_valid_pixel = max_alpha > 0u8;
                 cells.push(ImageGridCell {
                     cell_x: x,
                     cell_y: y,
@@ -174,6 +183,8 @@ mod tests {
         let expect = ImageInfo {
             path: "path".to_string(),
             grid_width: 5,
+            width: width,
+            height: height,
             cells: vec![
                 generate_image_grid_cell(0, 0, 0, 0, 4, 4, true),
                 generate_image_grid_cell(1, 0, 5, 0, 9, 4, true),
@@ -214,6 +225,8 @@ mod tests {
         let expect = ImageInfo {
             path: "path".to_string(),
             grid_width: 5,
+            width: width,
+            height: height,
             cells: vec![
                 generate_image_grid_cell(0, 0, 0, 0, 4, 4, true),
                 generate_image_grid_cell(1, 0, 5, 0, 9, 4, true),
@@ -259,6 +272,8 @@ mod tests {
         let expect = ImageInfo {
             path: "path".to_string(),
             grid_width: 5,
+            width: width,
+            height: height,
             cells: vec![
                 generate_image_grid_cell(0, 0, 0, 0, 4, 4, false),
                 generate_image_grid_cell(1, 0, 5, 0, 9, 4, false),
@@ -292,7 +307,7 @@ mod tests {
         let height = 3u32;
         let result_pixels = vec![
             0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, // 1行目
-            0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 255u8, 0u8, 0u8, 0u8, 0u8, // 2行目
+            0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 0u8, 0u8, 0u8, 0u8, // 2行目
             0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, // 3行目
         ];
         let result_img = image::ImageBuffer::from_raw(width, height, result_pixels).unwrap();
@@ -309,6 +324,8 @@ mod tests {
         let expect = ImageInfo {
             path: "path".to_string(),
             grid_width: 1,
+            width: width,
+            height: height,
             cells: vec![
                 generate_image_grid_cell(0, 0, 0, 0, 0, 0, false),
                 generate_image_grid_cell(1, 0, 1, 0, 1, 0, false),
@@ -335,6 +352,71 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_split_to_grid_valid_4x4_checker() {
+        // 4x4のチェッカーマーク
+        let width = 4u32;
+        let height = 4u32;
+        let result_pixels = vec![
+            // 1行目
+            vec![0u8, 0u8, 0u8, 0u8],
+            vec![0u8, 0u8, 0u8, 0u8],
+            vec![0u8, 0u8, 0u8, 1u8],
+            vec![0u8, 0u8, 0u8, 1u8],
+            // 2行目
+            vec![0u8, 0u8, 0u8, 0u8],
+            vec![0u8, 0u8, 0u8, 0u8],
+            vec![0u8, 0u8, 0u8, 1u8],
+            vec![0u8, 0u8, 0u8, 1u8],
+            // 3行目
+            vec![0u8, 0u8, 0u8, 1u8],
+            vec![0u8, 0u8, 0u8, 1u8],
+            vec![0u8, 0u8, 0u8, 0u8],
+            vec![0u8, 0u8, 0u8, 0u8],
+            // 4行目
+            vec![0u8, 0u8, 0u8, 1u8],
+            vec![0u8, 0u8, 0u8, 1u8],
+            vec![0u8, 0u8, 0u8, 0u8],
+            vec![0u8, 0u8, 0u8, 0u8],
+        ];
+        let result_pixels = result_pixels.into_iter().flatten().collect::<Vec<u8>>();
+        let result_img = image::ImageBuffer::from_raw(width, height, result_pixels).unwrap();
+        let mock_image_file = DynamicImage::ImageRgba8(result_img);
+        let mut mock_file_system = MockFileSystem::new();
+        mock_file_system
+            .expect_open_image_file()
+            .times(1)
+            .return_once_st(move |_| Ok(mock_image_file));
+        let repository = ImageInfoRepositoryImpl::new(&mock_file_system);
+        let result = repository.parse("path".to_string(), 2);
+        assert_eq!(result.is_ok(), true);
+        let result = result.unwrap();
+        let expect = ImageInfo {
+            path: "path".to_string(),
+            grid_width: 2,
+            width: width,
+            height: height,
+            cells: vec![
+                generate_image_grid_cell(0, 0, 0, 0, 1, 1, false),
+                generate_image_grid_cell(1, 0, 2, 0, 3, 1, true),
+                generate_image_grid_cell(0, 1, 0, 2, 1, 3, true),
+                generate_image_grid_cell(1, 1, 2, 2, 3, 3, false),
+            ],
+        };
+        assert_eq!(result.path, expect.path);
+        assert_eq!(result.grid_width, expect.grid_width);
+        assert_eq!(result.cells.len(), expect.cells.len());
+        for cell in result.cells {
+            if let Some(expect_cell) = expect.cells.iter().find(|expect_cell| {
+                expect_cell.cell_x == cell.cell_x && expect_cell.cell_y == cell.cell_y
+            }) {
+                assert_eq!(cell, expect_cell.clone());
+            } else {
+                panic!("invalid actual cell ({}, {})", cell.cell_x, cell.cell_y);
+            }
+        }
+    }
+
     fn generate_image_grid_cell(
         cell_x: u32,
         cell_y: u32,
@@ -343,7 +425,7 @@ mod tests {
         image_x2: u32,
         image_y2: u32,
         has_valid_pixel: bool,
-    ) {
+    ) -> ImageGridCell {
         ImageGridCell {
             cell_x,
             cell_y,

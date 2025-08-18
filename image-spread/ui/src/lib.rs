@@ -48,7 +48,7 @@ pub async fn run(config: &Config) -> AppResult<()> {
             };
             match usecase.run(param) {
                 Ok(image_info) => {
-                    println!("image info: {:?}", image_info);
+                    // println!("image info: {:?}", image_info);
                     return Ok(());
                 }
                 Err(e) => {
