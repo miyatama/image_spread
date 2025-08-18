@@ -4,4 +4,5 @@ use serde::{Deserialize, Serialize};
 pub struct ParseImageUseCaseParam {
     pub grid_width: u32,
     pub path: String,
+    pub save_grid_image: bool,
 }

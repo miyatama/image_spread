@@ -19,8 +19,16 @@ impl<'r, R: ImageInfoRepository> ParseImageUseCaseImpl<'r, R> {
 impl<'r, R: ImageInfoRepository> ParseImageUseCase for ParseImageUseCaseImpl<'r, R> {
     #[tracing::instrument(skip(self))]
     fn run(&self, param: ParseImageUseCaseParam) -> AppResult<ImageInfo> {
-        self.image_info_repository
+        let image_info = self
+            .image_info_repository
             .parse(param.path, param.grid_width)
+            .unwrap();
+        if param.save_grid_image {
+            self.image_info_repository
+                .write_grid_image(image_info.clone())
+                .unwrap();
+        }
+        Ok(image_info)
     }
 }
 

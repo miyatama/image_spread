@@ -4,4 +4,5 @@ use util::ImageInfo;
 #[mockall::automock]
 pub trait ImageInfoRepository {
     fn parse(&self, path: String, grid_width: u32) -> AppResult<ImageInfo>;
+    fn write_grid_image(&self, image_info: ImageInfo) -> AppResult<()>;
 }

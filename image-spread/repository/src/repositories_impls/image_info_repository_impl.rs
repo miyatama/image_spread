@@ -2,6 +2,7 @@ use crate::repositories::ImageInfoRepository;
 use image::GenericImageView;
 use infra::FileSystem;
 use util::AppResult;
+use util::Error::{InvalidImageInfoError, SaveFileError};
 use util::{ImageGridCell, ImageInfo};
 
 pub struct ImageInfoRepositoryImpl<'r, T: FileSystem> {
@@ -56,20 +57,17 @@ impl<'r, T: FileSystem> ImageInfoRepository for ImageInfoRepositoryImpl<'r, T> {
                 } else {
                     y1 + grid_width - 1
                 };
-                let start_index = (x1 + y1 * width) as usize;
-                let end_index = (x2 + y2 * width) as usize;
-                let has_valid_pixel =
-                    if let Some(max_alpha) = alphas[start_index..=end_index].iter().max() {
-                        *max_alpha > 0
-                    } else {
-                        false
-                    };
-                log::debug!(
-                    "range {} to {}.max alpha is {}",
-                    start_index,
-                    end_index,
-                    has_valid_pixel,
-                );
+                let mut max_alpha = 0u8;
+                for y in y1..=y2 {
+                    for x in x1..=x2 {
+                        let index = (y * grid_width + x) as usize;
+                        let alpha = alphas[index];
+                        if alpha > max_alpha {
+                            max_alpha = alpha;
+                        }
+                    }
+                }
+                let has_valid_pixel = max_alpha == 255;
                 cells.push(ImageGridCell {
                     cell_x: x,
                     cell_y: y,
@@ -84,8 +82,70 @@ impl<'r, T: FileSystem> ImageInfoRepository for ImageInfoRepositoryImpl<'r, T> {
         Ok(ImageInfo {
             path: path,
             grid_width: grid_width,
+            width: width,
+            height: height,
             cells: cells,
         })
+    }
+
+    fn write_grid_image(&self, image_info: ImageInfo) -> AppResult<()> {
+        let width = image_info.width;
+        let height = image_info.height;
+        let grid_width = image_info.grid_width;
+        let mut image = image::RgbImage::new(width, height);
+        let x_cell_size = width / grid_width;
+        let y_cell_size = height / grid_width;
+        let x_cell_size = if (x_cell_size * grid_width) < width {
+            x_cell_size + 1
+        } else {
+            x_cell_size
+        };
+        let y_cell_size = if (y_cell_size * grid_width) < height {
+            y_cell_size + 1
+        } else {
+            y_cell_size
+        };
+        let blue = image::Rgb([0u8, 0u8, 255u8]);
+        let white = image::Rgb([255u8, 255u8, 255u8]);
+        imageproc::drawing::draw_filled_rect_mut(
+            &mut image,
+            imageproc::rect::Rect::at(0i32, 0i32).of_size(width, height),
+            white,
+        );
+        for x in 0..x_cell_size {
+            for y in 0..y_cell_size {
+                if let Some(cell) = image_info
+                    .cells
+                    .iter()
+                    .find(|cell| cell.cell_x == x && cell.cell_y == y)
+                {
+                    if cell.has_valid_pixel {
+                        imageproc::drawing::draw_filled_rect_mut(
+                            &mut image,
+                            imageproc::rect::Rect::at(cell.image_x1 as i32, cell.image_y1 as i32)
+                                .of_size(
+                                    cell.image_x2 - cell.image_x1,
+                                    cell.image_y2 - cell.image_y1,
+                                ),
+                            blue,
+                        );
+                    }
+                } else {
+                    return Err(InvalidImageInfoError(format!(
+                        "cell not found({}, {})",
+                        x, y
+                    )));
+                }
+            }
+        }
+        let image: image::DynamicImage = image.into();
+        match self
+            .file_system
+            .save_ebidence_file("grid_image.png".to_string(), image)
+        {
+            Ok(_) => Ok(()),
+            Err(e) => Err(SaveFileError(format!("{}", e))),
+        }
     }
 }
 
@@ -99,7 +159,7 @@ mod tests {
     fn test_split_to_grid() {
         let width = 10u32;
         let height = 10u32;
-        let result_pixels = vec![100u8; width as usize * height as usize * 4usize];
+        let result_pixels = vec![255u8; width as usize * height as usize * 4usize];
         let result_img = image::ImageBuffer::from_raw(width, height, result_pixels).unwrap();
         let mock_image_file = DynamicImage::ImageRgba8(result_img);
         let mut mock_file_system = MockFileSystem::new();
@@ -115,42 +175,10 @@ mod tests {
             path: "path".to_string(),
             grid_width: 5,
             cells: vec![
-                ImageGridCell {
-                    cell_x: 0,
-                    cell_y: 0,
-                    image_x1: 0,
-                    image_y1: 0,
-                    image_x2: 4,
-                    image_y2: 4,
-                    has_valid_pixel: true,
-                },
-                ImageGridCell {
-                    cell_x: 1,
-                    cell_y: 0,
-                    image_x1: 5,
-                    image_y1: 0,
-                    image_x2: 9,
-                    image_y2: 4,
-                    has_valid_pixel: true,
-                },
-                ImageGridCell {
-                    cell_x: 0,
-                    cell_y: 1,
-                    image_x1: 0,
-                    image_y1: 5,
-                    image_x2: 4,
-                    image_y2: 9,
-                    has_valid_pixel: true,
-                },
-                ImageGridCell {
-                    cell_x: 1,
-                    cell_y: 1,
-                    image_x1: 5,
-                    image_y1: 5,
-                    image_x2: 9,
-                    image_y2: 9,
-                    has_valid_pixel: true,
-                },
+                generate_image_grid_cell(0, 0, 0, 0, 4, 4, true),
+                generate_image_grid_cell(1, 0, 5, 0, 9, 4, true),
+                generate_image_grid_cell(0, 1, 0, 5, 4, 9, true),
+                generate_image_grid_cell(1, 1, 5, 5, 9, 9, true),
             ],
         };
         assert_eq!(result.path, expect.path);
@@ -171,7 +199,7 @@ mod tests {
     fn test_split_to_grid_oversize() {
         let width = 12u32;
         let height = 12u32;
-        let result_pixels = vec![100u8; width as usize * height as usize * 4usize];
+        let result_pixels = vec![255u8; width as usize * height as usize * 4usize];
         let result_img = image::ImageBuffer::from_raw(width, height, result_pixels).unwrap();
         let mock_image_file = DynamicImage::ImageRgba8(result_img);
         let mut mock_file_system = MockFileSystem::new();
@@ -187,87 +215,15 @@ mod tests {
             path: "path".to_string(),
             grid_width: 5,
             cells: vec![
-                ImageGridCell {
-                    cell_x: 0,
-                    cell_y: 0,
-                    image_x1: 0,
-                    image_y1: 0,
-                    image_x2: 4,
-                    image_y2: 4,
-                    has_valid_pixel: true,
-                },
-                ImageGridCell {
-                    cell_x: 1,
-                    cell_y: 0,
-                    image_x1: 5,
-                    image_y1: 0,
-                    image_x2: 9,
-                    image_y2: 4,
-                    has_valid_pixel: true,
-                },
-                ImageGridCell {
-                    cell_x: 2,
-                    cell_y: 0,
-                    image_x1: 10,
-                    image_y1: 0,
-                    image_x2: 11,
-                    image_y2: 4,
-                    has_valid_pixel: true,
-                },
-                ImageGridCell {
-                    cell_x: 0,
-                    cell_y: 1,
-                    image_x1: 0,
-                    image_y1: 5,
-                    image_x2: 4,
-                    image_y2: 9,
-                    has_valid_pixel: true,
-                },
-                ImageGridCell {
-                    cell_x: 1,
-                    cell_y: 1,
-                    image_x1: 5,
-                    image_y1: 5,
-                    image_x2: 9,
-                    image_y2: 9,
-                    has_valid_pixel: true,
-                },
-                ImageGridCell {
-                    cell_x: 2,
-                    cell_y: 1,
-                    image_x1: 10,
-                    image_y1: 5,
-                    image_x2: 11,
-                    image_y2: 9,
-                    has_valid_pixel: true,
-                },
-                ImageGridCell {
-                    cell_x: 0,
-                    cell_y: 2,
-                    image_x1: 0,
-                    image_y1: 10,
-                    image_x2: 4,
-                    image_y2: 11,
-                    has_valid_pixel: true,
-                },
-                ImageGridCell {
-                    cell_x: 1,
-                    cell_y: 2,
-                    image_x1: 5,
-                    image_y1: 10,
-                    image_x2: 9,
-                    image_y2: 11,
-                    has_valid_pixel: true,
-                },
-                ImageGridCell {
-                    cell_x: 2,
-                    cell_y: 2,
-                    image_x1: 10,
-                    image_y1: 10,
-                    image_x2: 11,
-                    image_y2: 11,
-                    has_valid_pixel: true,
-                },
+                generate_image_grid_cell(0, 0, 0, 0, 4, 4, true),
+                generate_image_grid_cell(1, 0, 5, 0, 9, 4, true),
+                generate_image_grid_cell(2, 0, 10, 0, 11, 4, true),
+                generate_image_grid_cell(0, 1, 0, 5, 4, 9, true),
+                generate_image_grid_cell(1, 1, 5, 5, 9, 9, true),
+                generate_image_grid_cell(2, 1, 10, 5, 11, 9, true),
+                generate_image_grid_cell(0, 2, 0, 10, 4, 11, true),
+                generate_image_grid_cell(1, 2, 5, 10, 9, 11, true),
+                generate_image_grid_cell(2, 2, 10, 10, 11, 11, true),
             ],
         };
         assert_eq!(result.path, expect.path);
@@ -304,87 +260,15 @@ mod tests {
             path: "path".to_string(),
             grid_width: 5,
             cells: vec![
-                ImageGridCell {
-                    cell_x: 0,
-                    cell_y: 0,
-                    image_x1: 0,
-                    image_y1: 0,
-                    image_x2: 4,
-                    image_y2: 4,
-                    has_valid_pixel: false,
-                },
-                ImageGridCell {
-                    cell_x: 1,
-                    cell_y: 0,
-                    image_x1: 5,
-                    image_y1: 0,
-                    image_x2: 9,
-                    image_y2: 4,
-                    has_valid_pixel: false,
-                },
-                ImageGridCell {
-                    cell_x: 2,
-                    cell_y: 0,
-                    image_x1: 10,
-                    image_y1: 0,
-                    image_x2: 10,
-                    image_y2: 4,
-                    has_valid_pixel: false,
-                },
-                ImageGridCell {
-                    cell_x: 0,
-                    cell_y: 1,
-                    image_x1: 0,
-                    image_y1: 5,
-                    image_x2: 4,
-                    image_y2: 9,
-                    has_valid_pixel: false,
-                },
-                ImageGridCell {
-                    cell_x: 1,
-                    cell_y: 1,
-                    image_x1: 5,
-                    image_y1: 5,
-                    image_x2: 9,
-                    image_y2: 9,
-                    has_valid_pixel: false,
-                },
-                ImageGridCell {
-                    cell_x: 2,
-                    cell_y: 1,
-                    image_x1: 10,
-                    image_y1: 5,
-                    image_x2: 10,
-                    image_y2: 9,
-                    has_valid_pixel: false,
-                },
-                ImageGridCell {
-                    cell_x: 0,
-                    cell_y: 2,
-                    image_x1: 0,
-                    image_y1: 10,
-                    image_x2: 4,
-                    image_y2: 10,
-                    has_valid_pixel: false,
-                },
-                ImageGridCell {
-                    cell_x: 1,
-                    cell_y: 2,
-                    image_x1: 5,
-                    image_y1: 10,
-                    image_x2: 9,
-                    image_y2: 10,
-                    has_valid_pixel: false,
-                },
-                ImageGridCell {
-                    cell_x: 2,
-                    cell_y: 2,
-                    image_x1: 10,
-                    image_y1: 10,
-                    image_x2: 10,
-                    image_y2: 10,
-                    has_valid_pixel: false,
-                },
+                generate_image_grid_cell(0, 0, 0, 0, 4, 4, false),
+                generate_image_grid_cell(1, 0, 5, 0, 9, 4, false),
+                generate_image_grid_cell(2, 0, 10, 0, 10, 4, false),
+                generate_image_grid_cell(0, 1, 0, 5, 4, 9, false),
+                generate_image_grid_cell(1, 1, 5, 5, 9, 9, false),
+                generate_image_grid_cell(2, 1, 10, 5, 10, 9, false),
+                generate_image_grid_cell(0, 2, 0, 10, 4, 10, false),
+                generate_image_grid_cell(1, 2, 5, 10, 9, 10, false),
+                generate_image_grid_cell(2, 2, 10, 10, 10, 10, false),
             ],
         };
         assert_eq!(result.path, expect.path);
@@ -408,7 +292,7 @@ mod tests {
         let height = 3u32;
         let result_pixels = vec![
             0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, // 1行目
-            0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 0u8, 0u8, 0u8, 0u8, // 2行目
+            0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 255u8, 0u8, 0u8, 0u8, 0u8, // 2行目
             0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, // 3行目
         ];
         let result_img = image::ImageBuffer::from_raw(width, height, result_pixels).unwrap();
@@ -426,87 +310,15 @@ mod tests {
             path: "path".to_string(),
             grid_width: 1,
             cells: vec![
-                ImageGridCell {
-                    cell_x: 0,
-                    cell_y: 0,
-                    image_x1: 0,
-                    image_y1: 0,
-                    image_x2: 0,
-                    image_y2: 0,
-                    has_valid_pixel: false,
-                },
-                ImageGridCell {
-                    cell_x: 1,
-                    cell_y: 0,
-                    image_x1: 1,
-                    image_y1: 0,
-                    image_x2: 1,
-                    image_y2: 0,
-                    has_valid_pixel: false,
-                },
-                ImageGridCell {
-                    cell_x: 2,
-                    cell_y: 0,
-                    image_x1: 2,
-                    image_y1: 0,
-                    image_x2: 2,
-                    image_y2: 0,
-                    has_valid_pixel: false,
-                },
-                ImageGridCell {
-                    cell_x: 0,
-                    cell_y: 1,
-                    image_x1: 0,
-                    image_y1: 1,
-                    image_x2: 0,
-                    image_y2: 1,
-                    has_valid_pixel: false,
-                },
-                ImageGridCell {
-                    cell_x: 1,
-                    cell_y: 1,
-                    image_x1: 1,
-                    image_y1: 1,
-                    image_x2: 1,
-                    image_y2: 1,
-                    has_valid_pixel: true,
-                },
-                ImageGridCell {
-                    cell_x: 2,
-                    cell_y: 1,
-                    image_x1: 2,
-                    image_y1: 1,
-                    image_x2: 2,
-                    image_y2: 1,
-                    has_valid_pixel: false,
-                },
-                ImageGridCell {
-                    cell_x: 0,
-                    cell_y: 2,
-                    image_x1: 0,
-                    image_y1: 2,
-                    image_x2: 0,
-                    image_y2: 2,
-                    has_valid_pixel: false,
-                },
-                ImageGridCell {
-                    cell_x: 1,
-                    cell_y: 2,
-                    image_x1: 1,
-                    image_y1: 2,
-                    image_x2: 1,
-                    image_y2: 2,
-                    has_valid_pixel: false,
-                },
-                ImageGridCell {
-                    cell_x: 2,
-                    cell_y: 2,
-                    image_x1: 2,
-                    image_y1: 2,
-                    image_x2: 2,
-                    image_y2: 2,
-                    has_valid_pixel: false,
-                },
+                generate_image_grid_cell(0, 0, 0, 0, 0, 0, false),
+                generate_image_grid_cell(1, 0, 1, 0, 1, 0, false),
+                generate_image_grid_cell(2, 0, 2, 0, 2, 0, false),
+                generate_image_grid_cell(0, 1, 0, 1, 0, 1, false),
+                generate_image_grid_cell(1, 1, 1, 1, 1, 1, true),
+                generate_image_grid_cell(2, 1, 2, 1, 2, 1, false),
+                generate_image_grid_cell(0, 2, 0, 2, 0, 2, false),
+                generate_image_grid_cell(1, 2, 1, 2, 1, 2, false),
+                generate_image_grid_cell(2, 2, 2, 2, 2, 2, false),
             ],
         };
         assert_eq!(result.path, expect.path);
@@ -520,6 +332,26 @@ mod tests {
             } else {
                 panic!("invalid actual cell ({}, {})", cell.cell_x, cell.cell_y);
             }
+        }
+    }
+
+    fn generate_image_grid_cell(
+        cell_x: u32,
+        cell_y: u32,
+        image_x1: u32,
+        image_y1: u32,
+        image_x2: u32,
+        image_y2: u32,
+        has_valid_pixel: bool,
+    ) {
+        ImageGridCell {
+            cell_x,
+            cell_y,
+            image_x1,
+            image_y1,
+            image_x2,
+            image_y2,
+            has_valid_pixel,
         }
     }
 }

@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 pub struct ImageInfo {
     pub grid_width: u32,
     pub path: String,
+    pub width: u32,
+    pub height: u32,
     pub cells: Vec<ImageGridCell>,
 }
 

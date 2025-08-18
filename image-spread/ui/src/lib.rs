@@ -1,7 +1,6 @@
 use clap::{Parser, Subcommand};
 use infra_handler::InfraHandlerImpl;
 use repository_handler::RepositoryHandlerImpl;
-use tracing::{Level, event};
 use usecase::{ParseImageUseCase, ParseImageUseCaseParam};
 use usecase_handler::{UsecaseHandler, UsecaseHandlerImpl};
 use util::AppResult;
@@ -20,6 +19,13 @@ enum SubCommands {
         grid_width: u32,
         #[clap(short = 'p', long = "path", required = true, ignore_case = true)]
         path: String,
+        #[clap(
+            short = 'g',
+            long = "save-grid-image",
+            required = false,
+            default_value_t = false
+        )]
+        save_grid_image: bool,
     },
 }
 
@@ -29,11 +35,16 @@ pub async fn run(config: &Config) -> AppResult<()> {
     let repository_handler = RepositoryHandlerImpl::new(&infra_hanler);
     let usecases = UsecaseHandlerImpl::new(&repository_handler).await;
     match &config.subcommand {
-        SubCommands::ImageInfo { grid_width, path } => {
+        SubCommands::ImageInfo {
+            grid_width,
+            path,
+            save_grid_image,
+        } => {
             let usecase = usecases.parse_image();
             let param = ParseImageUseCaseParam {
                 path: (*path.clone()).to_string(),
                 grid_width: *grid_width,
+                save_grid_image: *save_grid_image,
             };
             match usecase.run(param) {
                 Ok(image_info) => {
