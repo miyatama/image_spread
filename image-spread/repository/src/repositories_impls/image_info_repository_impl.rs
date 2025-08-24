@@ -3,7 +3,7 @@ use image::GenericImageView;
 use infra::FileSystem;
 use util::AppResult;
 use util::Error::{InvalidImageInfoError, SaveFileError};
-use util::{ImageGridCell, ImageInfo};
+use util::{ImageGridCell, ImageInfo, Line, Point};
 
 pub struct ImageInfoRepositoryImpl<'r, T: FileSystem> {
     file_system: &'r T,
@@ -88,12 +88,16 @@ impl<'r, T: FileSystem> ImageInfoRepository for ImageInfoRepositoryImpl<'r, T> {
                 });
             }
         }
+        let cell_blocks = vec![];
         Ok(ImageInfo {
             path: path,
             grid_width: grid_width,
             width: width,
             height: height,
             cells: cells,
+            cells_width: x_cell_size,
+            cells_height: y_cell_size,
+            cell_blocks: cell_blocks,
         })
     }
 
@@ -191,10 +195,15 @@ mod tests {
                 generate_image_grid_cell(0, 1, 0, 5, 4, 9, true),
                 generate_image_grid_cell(1, 1, 5, 5, 9, 9, true),
             ],
+            cells_width: 2,
+            cells_height: 2,
+            cell_blocks: vec![],
         };
         assert_eq!(result.path, expect.path);
         assert_eq!(result.grid_width, expect.grid_width);
         assert_eq!(result.cells.len(), expect.cells.len());
+        assert_eq!(result.cells_width, expect.cells_width);
+        assert_eq!(result.cells_height, expect.cells_height);
         for cell in result.cells {
             if let Some(expect_cell) = expect.cells.iter().find(|expect_cell| {
                 expect_cell.cell_x == cell.cell_x && expect_cell.cell_y == cell.cell_y
@@ -238,10 +247,15 @@ mod tests {
                 generate_image_grid_cell(1, 2, 5, 10, 9, 11, true),
                 generate_image_grid_cell(2, 2, 10, 10, 11, 11, true),
             ],
+            cells_width: 3,
+            cells_height: 3,
+            cell_blocks: vec![],
         };
         assert_eq!(result.path, expect.path);
         assert_eq!(result.grid_width, expect.grid_width);
         assert_eq!(result.cells.len(), expect.cells.len());
+        assert_eq!(result.cells_width, expect.cells_width);
+        assert_eq!(result.cells_height, expect.cells_height);
         for cell in result.cells {
             if let Some(expect_cell) = expect.cells.iter().find(|expect_cell| {
                 expect_cell.cell_x == cell.cell_x && expect_cell.cell_y == cell.cell_y
@@ -285,10 +299,15 @@ mod tests {
                 generate_image_grid_cell(1, 2, 5, 10, 9, 10, false),
                 generate_image_grid_cell(2, 2, 10, 10, 10, 10, false),
             ],
+            cells_width: 3,
+            cells_height: 3,
+            cell_blocks: vec![],
         };
         assert_eq!(result.path, expect.path);
         assert_eq!(result.grid_width, expect.grid_width);
         assert_eq!(result.cells.len(), expect.cells.len());
+        assert_eq!(result.cells_width, expect.cells_width);
+        assert_eq!(result.cells_height, expect.cells_height);
         for cell in result.cells {
             if let Some(expect_cell) = expect.cells.iter().find(|expect_cell| {
                 expect_cell.cell_x == cell.cell_x && expect_cell.cell_y == cell.cell_y
@@ -337,10 +356,15 @@ mod tests {
                 generate_image_grid_cell(1, 2, 1, 2, 1, 2, false),
                 generate_image_grid_cell(2, 2, 2, 2, 2, 2, false),
             ],
+            cells_width: 3,
+            cells_height: 3,
+            cell_blocks: vec![],
         };
         assert_eq!(result.path, expect.path);
         assert_eq!(result.grid_width, expect.grid_width);
         assert_eq!(result.cells.len(), expect.cells.len());
+        assert_eq!(result.cells_width, expect.cells_width);
+        assert_eq!(result.cells_height, expect.cells_height);
         for cell in result.cells {
             if let Some(expect_cell) = expect.cells.iter().find(|expect_cell| {
                 expect_cell.cell_x == cell.cell_x && expect_cell.cell_y == cell.cell_y
@@ -402,10 +426,51 @@ mod tests {
                 generate_image_grid_cell(0, 1, 0, 2, 1, 3, true),
                 generate_image_grid_cell(1, 1, 2, 2, 3, 3, false),
             ],
+            cells_width: 2,
+            cells_height: 2,
+            cell_blocks: vec![CellBlock {
+                has_cell: vec![Point { x: 0, y: 1 }, Point { x: 1, y: 0 }],
+                lines: vec![
+                    Line {
+                        p1: Point { x: 2, y: 0 },
+                        p2: Point { x: 4, y: 0 },
+                    },
+                    Line {
+                        p1: Point { x: 4, y: 0 },
+                        p2: Point { x: 4, y: 2 },
+                    },
+                    Line {
+                        p1: Point { x: 4, y: 2 },
+                        p2: Point { x: 2, y: 2 },
+                    },
+                    Line {
+                        p1: Point { x: 2, y: 2 },
+                        p2: Point { x: 2, y: 4 },
+                    },
+                    Line {
+                        p1: Point { x: 2, y: 4 },
+                        p2: Point { x: 0, y: 4 },
+                    },
+                    Line {
+                        p1: Point { x: 0, y: 4 },
+                        p2: Point { x: 0, y: 2 },
+                    },
+                    Line {
+                        p1: Point { x: 0, y: 2 },
+                        p2: Point { x: 2, y: 2 },
+                    },
+                    Line {
+                        p1: Point { x: 2, y: 2 },
+                        p2: Point { x: 2, y: 0 },
+                    },
+                ],
+            }],
         };
         assert_eq!(result.path, expect.path);
         assert_eq!(result.grid_width, expect.grid_width);
         assert_eq!(result.cells.len(), expect.cells.len());
+        assert_eq!(result.cells_width, expect.cells_width);
+        assert_eq!(result.cells_height, expect.cells_height);
         for cell in result.cells {
             if let Some(expect_cell) = expect.cells.iter().find(|expect_cell| {
                 expect_cell.cell_x == cell.cell_x && expect_cell.cell_y == cell.cell_y
